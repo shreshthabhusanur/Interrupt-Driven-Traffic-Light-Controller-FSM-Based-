@@ -1,0 +1,74 @@
+enum State {
+  RED,
+  GREEN,
+  YELLOW,
+  PEDESTRIAN
+};
+
+State currentState = RED;
+
+volatile bool pedestrianRequest = false;
+
+void pedestrianISR() {
+  pedestrianRequest = true;
+}
+
+void setup() {
+  pinMode(8, OUTPUT);   // RED
+  pinMode(9, OUTPUT);   // YELLOW
+  pinMode(10, OUTPUT);  // GREEN
+
+  pinMode(2, INPUT_PULLUP);  // Button
+
+  attachInterrupt(digitalPinToInterrupt(2), pedestrianISR, FALLING);
+}
+
+void loop() {
+
+  switch(currentState) {
+
+    case RED:
+      digitalWrite(8, HIGH);
+      digitalWrite(9, LOW);
+      digitalWrite(10, LOW);
+      delay(5000);
+      currentState = GREEN;
+      break;
+
+    case GREEN:
+      digitalWrite(8, LOW);
+      digitalWrite(9, LOW);
+      digitalWrite(10, HIGH);
+
+      for(int i = 0; i < 50; i++) {  // 5 sec with interrupt check
+        delay(100);
+        if(pedestrianRequest) {
+          currentState = PEDESTRIAN;
+          pedestrianRequest = false;
+          return;
+        }
+      }
+
+      currentState = YELLOW;
+      break;
+
+    case YELLOW:
+      digitalWrite(8, LOW);
+      digitalWrite(9, HIGH);
+      digitalWrite(10, LOW);
+      delay(2000);
+      currentState = RED;
+      break;
+
+    case PEDESTRIAN:
+      // All traffic stops (RED ON)
+      digitalWrite(8, HIGH);
+      digitalWrite(9, LOW);
+      digitalWrite(10, LOW);
+
+      delay(5000);  // Pedestrian crossing time
+
+      currentState = RED;
+      break;
+  }
+}
